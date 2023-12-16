@@ -8,14 +8,32 @@ local Players = game:GetService("Players")
 
 --[[Connecting the necessary modules]]
 local Utils_RS = require(RS.Utils_RS) 
-local Laser_RS = require(RS.Laser_RS) 
-
 local CurrentCamera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 --[[Tables for storing connections, in order to later clean up these 
 connections when they are no longer needed, to avoid memory leaks.]]
 local ConT = {Con = {}, Num = 0}
+
+--[[Function that uses workspace:GetPartBoundsInBox, to find slimes in a certain area of ​​action and attract them to you.]]
+function Laser2(partStartPos,  partEndPos, size, params)
+	local diff = (partStartPos  - partEndPos)	
+	local boxCFrame = CFrame.new((partEndPos + 0.5*diff), partStartPos)
+	local boxSize = Vector3.new(size, size, diff.Magnitude)
+	local objectsInSpace = workspace:GetPartBoundsInBox(boxCFrame,boxSize,params)
+	return objectsInSpace
+end
+
+--[[get the mass of the model]]
+function GetMass(Model:Model):number
+	local Mass = 0
+	for _,v in Model:GetDescendants() do
+		if v:IsA("BasePart") then
+			Mass += v.Mass  
+		end
+	end
+	return Mass
+end
 
 --[[Weapon initialization function for interacting with slimes]]
 function module.Init(ChrT, ViewModelT)	
@@ -43,7 +61,6 @@ function module.Init(ChrT, ViewModelT)
 	local M1btnPress, M2btnPress = false, false
 	local Main = VacPac.Main
 	local FireAttach = Main.FireAttach
-
 	local BigWheelM6d = Main.BigWheel
 	local SmallWheelM6d = Main.SmallWheel
 
@@ -95,8 +112,7 @@ function module.Init(ChrT, ViewModelT)
 				--[[Rotation of 6D motors on weapons]]
             BigWheelM6d.C0 *= CFrame.fromOrientation(0,0,math.rad(5))
 				SmallWheelM6d.C0 *= CFrame.fromOrientation(0,0,math.rad(-5))
-			
-			
+						
          	local SlimeAPosInZoneT = {}
           	--[[Position where the camera is looking at 30 studs]]
             local posEnd = CurrentCamera.CFrame.Position + CurrentCamera.CFrame.LookVector*30 
@@ -110,10 +126,9 @@ function module.Init(ChrT, ViewModelT)
 				end
 
 				--[[Function that uses workspace:GetPartBoundsInBox, to find slimes in a certain area of ​​action and attract them to you.]]
-            local partsT = Laser_RS.Laser2(FireAttach.WorldPosition,  posEnd, 8, DragOutParams)
+            local partsT = Laser2(FireAttach.WorldPosition,  posEnd, 8, DragOutParams)
 
-				for k,part in partsT do
-				
+				for k,part in partsT do				
                --[[ looking for a part with a name Main]]
                if part.Name ~= "Main" then continue end
 					local model = part.Parent					
@@ -135,7 +150,6 @@ function module.Init(ChrT, ViewModelT)
                --[[Table for saving AlignPosition, which must be turned off 
                if the slimes leave the action area while the weapon is working.]]
                SlimeAPosInZoneT[model] = AlignPosition
-
 					
                --[[The code below is needed to use Orientation to move the slime 
                to the weapon that attracts them. Sine and cosine are needed for 
@@ -188,7 +202,6 @@ function module.Init(ChrT, ViewModelT)
 		end
 	end)
 
-
 	ConT.Num+=1
 	ConT.Con[ConT.Num] = UIS.InputEnded:Connect(function(input, gameProcessed)	
 		--[[When you release the left mouse button]] 
@@ -210,7 +223,7 @@ function module.Init(ChrT, ViewModelT)
    ConT.Num+=1
 	ConT.Con[ConT.Num] = RS.EVENTS.VACPAC.ShotE.OnClientEvent:Connect(function(Model)
 		local direction = CurrentCamera.CFrame.LookVector
-		local Mass = Utils_RS.Model.GetMass(Model)	
+		local Mass = GetMass(Model)	
 		Model.PrimaryPart:ApplyImpulse(direction*50*Mass + Vector3.new(0,20*Mass,0))
 	end) 
 end
@@ -224,4 +237,3 @@ function module.Finalize()
 end
 
 return module
-
